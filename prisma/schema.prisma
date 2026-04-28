@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                    String   @id @default(cuid())
+  email                 String   @unique
+  emailVerified         DateTime?
+  name                  String?
+  image                 String?
+  plano                 String   @default("free")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
+  deletedPermanentlyAt  DateTime?
+
+  diagnosticos          Diagnostico[]
+  chatSessions          ChatSession[]
+  consentimentos        Consentimento[]
+  historicoMensal       HistoricoMensal[]
+  accounts              Account[]
+  sessions              Session[]
+
+  @@map("usuarios")
+}
+
+model Diagnostico {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rendaFixa         Float    @default(0)
+  rendaVariavel     Float    @default(0)
+  gastosFixos       Float    @default(0)
+  gastosVariaveis   Float    @default(0)
+  dividaTotal       Float    @default(0)
+  parcelasMensais   Float    @default(0)
+  valorPoupado      Float    @default(0)
+  valorInvestido    Float    @default(0)
+
+  objetivoCurto     String?
+  objetivoLongo     String?
+
+  origem            String   @default("manual")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  historicoMensal   HistoricoMensal[]
+  transacoesCSV     TransacaoCSV[]
+
+  @@map("diagnosticos")
+}
+
+model HistoricoMensal {
+  id                      String   @id @default(cuid())
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  diagnosticoId           String
+  diagnostico             Diagnostico @relation(fields: [diagnosticoId], references: [id], onDelete: Cascade)
+
+  mes                     DateTime
+  rendaTotal              Float
+  gastosTotal             Float
+  saldoMensal             Float
+  percentualComprometido  Float
+  percentualDivida        Float
+  nivelRisco              String
+  perfil                  String
+
+  problemaPrincipal       String?
+  prioridadeMes           String?
+  metaEconomia            Float?
+
+  createdAt               DateTime @default(now())
+
+  @@unique([userId, mes])
+  @@map("historico_mensal")
+}
+
+model TransacaoCSV {
+  id                String   @id @default(cuid())
+  diagnosticoId     String
+  diagnostico       Diagnostico @relation(fields: [diagnosticoId], references: [id], onDelete: Cascade)
+
+  arquivoHash       String   @unique
+  caminhoStorage    String
+  quantidadeLinhas  Int
+
+  status            String   @default("processado")
+  erroMsg           String?
+
+  dataUpload        DateTime @default(now())
+
+  @@map("transacoes_csv")
+}
+
+model ChatSession {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  titulo            String   @default("Conversa com Mentor")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  mensagens         ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id                String   @id @default(cuid())
+  sessionId         String
+  session           ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role              String
+  conteudo          String   @db.Text
+
+  createdAt         DateTime @default(now())
+
+  @@map("chat_messages")
+}
+
+model Consentimento {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tipo              String
+  aceito            Boolean
+  origin            String   @default("api")
+  dataConsentimento DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  ipAddress         String?
+
+  @@unique([userId, tipo])
+  @@map("consentimentos")
+}
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  evento            String
+  userId            String?
+  timestamp         DateTime @default(now())
+  ipAddress         String?
+  userAgent         String?
+  detalhes          String?  @db.Text
+
+  @@map("audit_logs")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
