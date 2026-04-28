@@ -17,8 +17,9 @@ export default async function ImportarPage() {
               Suba seu extrato ou fatura para preencher mais rapido.
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-              Use arquivos CSV, OFX ou TXT. A analise sugere valores para o
-              diagnostico, e voce revisa tudo antes de salvar.
+              Use arquivos CSV, OFX, TXT ou PDF com texto selecionavel. A
+              analise sugere valores para o diagnostico, e voce revisa tudo
+              antes de salvar.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

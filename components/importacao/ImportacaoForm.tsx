@@ -140,8 +140,8 @@ export function ImportacaoForm() {
       <Card>
         <CardTitle>Upload de extrato ou fatura</CardTitle>
         <CardDescription>
-          Envie CSV, OFX ou TXT exportado pelo banco/cartao. PDF ainda nao e
-          interpretado automaticamente.
+          Envie CSV, OFX, TXT ou PDF exportado pelo banco/cartao. PDF precisa
+          ter texto selecionavel; PDF escaneado como imagem pode falhar.
         </CardDescription>
 
         <form className="mt-6 space-y-4" onSubmit={analyzeFile}>
@@ -165,7 +165,7 @@ export function ImportacaoForm() {
                 Arquivo
               </span>
               <input
-                accept=".csv,.ofx,.txt,text/csv,text/plain"
+                accept=".csv,.ofx,.txt,.pdf,text/csv,text/plain,application/pdf"
                 className="mt-3 block w-full text-sm"
                 name="file"
                 required
