@@ -29,6 +29,12 @@ const AMOUNT_PATTERN =
 const DATE_PATTERN = /\b\d{2}\/\d{2}(?:\/\d{2,4})?\b/;
 const SUMMARY_LINE_PATTERN =
   /\b(total\s+(?:da|desta)?\s*fatura|total\s+a\s+pagar|pagamento\s+m[ií]nimo|valor\s+total|saldo\s+(?:anterior|atual|dispon[ií]vel)|limite\s+(?:total|dispon[ií]vel|utilizado)|vencimento|melhor\s+dia|fechamento|resumo\s+(?:da|de)|compras\s+(?:nacionais|internacionais)|valor\s+em\s+d[oó]lar|cota[cç][aã]o)\b/i;
+const CARD_INFO_LINE_PATTERN =
+  /\b(total\s+a\s+financiar|pag\.\s*m[ií]nimo|m[ií]nimo|compras\s*\/\s*d[eé]bitos|cr[eé]ditos\s*\/\s*pagamentos|parcela\s+de|juros|cet\s+do\s+parcelamento|valor\s+do\s+iof|iof|encargos|total\s*\.+)\b|^\s*\(?[+=-]\)?/i;
+const ONLY_AMOUNT_LINE_PATTERN = new RegExp(
+  `^\\s*(?:${AMOUNT_PATTERN.source})\\s*$`,
+  "i"
+);
 const MIN_TRANSACTION_AMOUNT = 0.01;
 const MAX_REASONABLE_TRANSACTION_AMOUNT = 100_000;
 
@@ -75,7 +81,11 @@ function cleanDescription(line: string, amountToken: string) {
 }
 
 function extractTransactionFromLine(line: string): ParsedTransaction | null {
-  if (SUMMARY_LINE_PATTERN.test(line)) {
+  if (
+    SUMMARY_LINE_PATTERN.test(line) ||
+    CARD_INFO_LINE_PATTERN.test(line) ||
+    ONLY_AMOUNT_LINE_PATTERN.test(line)
+  ) {
     return null;
   }
 
@@ -92,10 +102,20 @@ function extractTransactionFromLine(line: string): ParsedTransaction | null {
     return null;
   }
 
+  const description = cleanDescription(line, amountToken);
+
+  if (
+    !description ||
+    SUMMARY_LINE_PATTERN.test(description) ||
+    CARD_INFO_LINE_PATTERN.test(description)
+  ) {
+    return null;
+  }
+
   return {
     amount,
     date: line.match(DATE_PATTERN)?.[0],
-    description: cleanDescription(line, amountToken) || "Transacao importada",
+    description,
     line,
   };
 }
