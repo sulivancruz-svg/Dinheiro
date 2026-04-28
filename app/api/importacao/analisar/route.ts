@@ -35,6 +35,8 @@ const ONLY_AMOUNT_LINE_PATTERN = new RegExp(
   `^\\s*(?:${AMOUNT_PATTERN.source})\\s*$`,
   "i"
 );
+const CARD_MOVEMENT_LINE_PATTERN =
+  /\b(pagto\.?\s+por\s+deb\s+em\s+c\/c|custo\s+trans\.?\s+exterior(?:-iof)?|transa[cç][aã]o\s+exterior|saque\s+internacional|compra\s+internacional)\b/i;
 const MIN_TRANSACTION_AMOUNT = 0.01;
 const MAX_REASONABLE_TRANSACTION_AMOUNT = 100_000;
 
@@ -84,6 +86,7 @@ function extractTransactionFromLine(line: string): ParsedTransaction | null {
   if (
     SUMMARY_LINE_PATTERN.test(line) ||
     CARD_INFO_LINE_PATTERN.test(line) ||
+    CARD_MOVEMENT_LINE_PATTERN.test(line) ||
     ONLY_AMOUNT_LINE_PATTERN.test(line)
   ) {
     return null;
@@ -107,7 +110,8 @@ function extractTransactionFromLine(line: string): ParsedTransaction | null {
   if (
     !description ||
     SUMMARY_LINE_PATTERN.test(description) ||
-    CARD_INFO_LINE_PATTERN.test(description)
+    CARD_INFO_LINE_PATTERN.test(description) ||
+    CARD_MOVEMENT_LINE_PATTERN.test(description)
   ) {
     return null;
   }
