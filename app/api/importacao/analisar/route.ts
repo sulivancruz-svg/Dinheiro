@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { PDFParse } from "pdf-parse";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { authOptions } from "@/lib/auth/config";
 import { logSecureEvent } from "@/lib/utils/logger";
 import { prisma } from "@/lib/db/prisma";
 
 export const runtime = "nodejs";
+
+const pdfWorkerSrc = pathToFileURL(
+  join(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs")
+).href;
+
+PDFParse.setWorker(pdfWorkerSrc);
 
 type ParsedTransaction = {
   amount: number;
