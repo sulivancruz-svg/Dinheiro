@@ -2,6 +2,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { ConsentToggle } from "@/components/settings/ConsentToggle";
 import { DataExportButton } from "@/components/settings/DataExportButton";
+import { DeleteAccountButton } from "@/components/settings/DeleteAccountButton";
 import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -168,13 +169,12 @@ export default async function SettingsPage() {
           <CardTitle>LGPD</CardTitle>
           <CardDescription>
             Exporte uma copia dos dados associados a sua conta em JSON. A
-            exclusao da conta com soft delete sera a proxima etapa.
+            solicitacao de exclusao aplica soft delete, revoga consentimentos e
+            encerra sessoes ativas.
           </CardDescription>
           <div className="mt-6 flex flex-wrap gap-3">
             <DataExportButton />
-            <ButtonLink href="/settings" variant="ghost">
-              Exclusao em breve
-            </ButtonLink>
+            <DeleteAccountButton />
           </div>
         </Card>
       </section>
