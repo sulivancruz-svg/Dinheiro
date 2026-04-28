@@ -23,5 +23,6 @@ export const config = {
     "/historico/:path*",
     "/caixinhas/:path*",
     "/settings/:path*",
+    "/api/lgpd/:path*",
   ],
 };

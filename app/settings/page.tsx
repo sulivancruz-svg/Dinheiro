@@ -1,6 +1,7 @@
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { ConsentToggle } from "@/components/settings/ConsentToggle";
+import { DataExportButton } from "@/components/settings/DataExportButton";
 import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -15,13 +16,13 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 const consentConfig = [
   {
     tipo: "WHATSAPP" as const,
-    title: "Comunicação por WhatsApp",
+    title: "Comunicacao por WhatsApp",
     description:
       "Permite receber lembretes, avisos de progresso e mensagens educacionais pelo WhatsApp quando essa integracao estiver ativa.",
   },
   {
     tipo: "EMAIL_MARKETING" as const,
-    title: "Emails de conteúdo e novidades",
+    title: "Emails de conteudo e novidades",
     description:
       "Permite receber materiais educativos, melhorias do produto e comunicacoes de marketing por email.",
   },
@@ -166,14 +167,11 @@ export default async function SettingsPage() {
         <Card className="mt-5 border-[var(--color-clay)]/20 bg-[var(--color-paper)]/90">
           <CardTitle>LGPD</CardTitle>
           <CardDescription>
-            Proximas acoes planejadas: exportar todos os seus dados em JSON e
-            solicitar exclusao da conta com soft delete. Por enquanto, seus
-            consentimentos ja ficam registrados e auditaveis.
+            Exporte uma copia dos dados associados a sua conta em JSON. A
+            exclusao da conta com soft delete sera a proxima etapa.
           </CardDescription>
           <div className="mt-6 flex flex-wrap gap-3">
-            <ButtonLink href="/settings" variant="secondary">
-              Exportacao em breve
-            </ButtonLink>
+            <DataExportButton />
             <ButtonLink href="/settings" variant="ghost">
               Exclusao em breve
             </ButtonLink>
