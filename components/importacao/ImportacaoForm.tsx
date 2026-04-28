@@ -21,6 +21,12 @@ type AnalysisResult = {
   fileName: string;
   sourceType: string;
   transactions: number;
+  items: Array<{
+    amount: number;
+    date?: string;
+    description: string;
+    line: string;
+  }>;
   summary: {
     income: number;
     expenses: number;
@@ -50,9 +56,37 @@ export function ImportacaoForm() {
   const router = useRouter();
   const [sourceType, setSourceType] = useState("extrato");
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [includedItems, setIncludedItems] = useState<Set<number>>(new Set());
   const [values, setValues] = useState<Suggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  function buildSuggestion(data: AnalysisResult, indexes: Set<number>) {
+    const selectedItems = data.items.filter((_, index) => indexes.has(index));
+    const income =
+      data.sourceType === "cartao"
+        ? 0
+        : selectedItems
+            .filter((item) => item.amount > 0)
+            .reduce((sum, item) => sum + item.amount, 0);
+    const expenses =
+      data.sourceType === "cartao"
+        ? selectedItems.reduce((sum, item) => sum + Math.abs(item.amount), 0)
+        : selectedItems
+            .filter((item) => item.amount < 0)
+            .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+
+    return {
+      rendaFixa: 0,
+      rendaVariavel: Math.round(income * 100) / 100,
+      gastosFixos: 0,
+      gastosVariaveis: Math.round(expenses * 100) / 100,
+      parcelasMensais: 0,
+      valorPoupado: 0,
+      valorInvestido: 0,
+      dividaTotal: 0,
+    };
+  }
 
   function analyzeFile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -74,8 +108,13 @@ export function ImportacaoForm() {
             throw new Error(data.error || "Nao foi possivel analisar o arquivo.");
           }
 
+          const initialIncludedItems = new Set<number>(
+            data.items.map((_: unknown, index: number) => index)
+          );
+
           setResult(data);
-          setValues(data.suggestion);
+          setIncludedItems(initialIncludedItems);
+          setValues(buildSuggestion(data, initialIncludedItems));
         })
         .catch((requestError: unknown) => {
           setError(
@@ -135,6 +174,23 @@ export function ImportacaoForm() {
     }));
   }
 
+  function toggleTransaction(index: number) {
+    if (!result) return;
+
+    setIncludedItems((current) => {
+      const next = new Set(current);
+
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+
+      setValues(buildSuggestion(result, next));
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-5">
       <Card>
@@ -190,8 +246,8 @@ export function ImportacaoForm() {
         <Card>
           <CardTitle>Resultado da analise</CardTitle>
           <CardDescription>
-            {result.transactions} transacoes encontradas em {result.fileName}.
-            Ajuste os campos antes de salvar.
+            {includedItems.size} de {result.transactions} transacoes selecionadas
+            em {result.fileName}. Revise a lista antes de salvar.
           </CardDescription>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -209,7 +265,68 @@ export function ImportacaoForm() {
             </div>
             <div className="rounded-2xl bg-[var(--color-sand)]/45 p-4">
               <p className="text-sm text-[var(--color-muted)]">Transacoes</p>
-              <p className="mt-1 text-2xl font-black">{result.transactions}</p>
+              <p className="mt-1 text-2xl font-black">{includedItems.size}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--color-ink)]/10 bg-white/75">
+            <div className="flex flex-col gap-1 border-b border-[var(--color-ink)]/10 px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-[var(--color-ink)]">
+                  Transacoes extraidas
+                </p>
+                <p className="text-xs leading-5 text-[var(--color-muted)]">
+                  Desmarque linhas que forem total, limite, resumo ou leitura
+                  errada do PDF.
+                </p>
+              </div>
+              <p className="text-xs font-bold text-[var(--color-muted)]">
+                Total selecionado:{" "}
+                {currency.format(values.gastosVariaveis + values.rendaVariavel)}
+              </p>
+            </div>
+
+            <div className="max-h-96 overflow-auto">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="sticky top-0 bg-[var(--color-sand)] text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                  <tr>
+                    <th className="px-4 py-3">Usar</th>
+                    <th className="px-4 py-3">Data</th>
+                    <th className="px-4 py-3">Descricao</th>
+                    <th className="px-4 py-3 text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.items.map((item, index) => (
+                    <tr
+                      className="border-t border-[var(--color-ink)]/8"
+                      key={`${item.line}-${index}`}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          checked={includedItems.has(index)}
+                          onChange={() => toggleTransaction(index)}
+                          type="checkbox"
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {item.date || "-"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-[var(--color-ink)]">
+                          {item.description}
+                        </p>
+                        <p className="mt-1 line-clamp-1 text-xs text-[var(--color-muted)]">
+                          {item.line}
+                        </p>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-black">
+                        {currency.format(item.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 

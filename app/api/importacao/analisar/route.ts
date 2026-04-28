@@ -17,37 +17,118 @@ PDFParse.setWorker(pdfWorkerSrc);
 
 type ParsedTransaction = {
   amount: number;
-  description?: string;
+  date?: string;
+  description: string;
+  line: string;
 };
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const SUPPORTED_EXTENSIONS = [".csv", ".ofx", ".txt", ".pdf"];
 const AMOUNT_PATTERN =
-  /[-+]?\s?(?:R\$\s*)?\d{1,3}(?:\.\d{3})*,\d{2}|[-+]?\s?(?:R\$\s*)?\d+[.,]\d{2}/g;
+  /(?<![\d])[-+]?\s?(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,3}(?:,\d{3})+\.\d{2}|\d+,\d{2}|\d+\.\d{2})(?![\d])/g;
+const DATE_PATTERN = /\b\d{2}\/\d{2}(?:\/\d{2,4})?\b/;
+const SUMMARY_LINE_PATTERN =
+  /\b(total\s+(?:da|desta)?\s*fatura|total\s+a\s+pagar|pagamento\s+m[ií]nimo|valor\s+total|saldo\s+(?:anterior|atual|dispon[ií]vel)|limite\s+(?:total|dispon[ií]vel|utilizado)|vencimento|melhor\s+dia|fechamento|resumo\s+(?:da|de)|compras\s+(?:nacionais|internacionais)|valor\s+em\s+d[oó]lar|cota[cç][aã]o)\b/i;
+const MIN_TRANSACTION_AMOUNT = 0.01;
+const MAX_REASONABLE_TRANSACTION_AMOUNT = 100_000;
 
 function parseBrazilianAmount(rawValue: string): number | null {
-  const cleaned = rawValue
-    .replace(/[^\d,.-]/g, "")
-    .replace(/\.(?=\d{3}(\D|$))/g, "")
-    .replace(",", ".");
+  const valueWithSign = rawValue.replace(/\s+/g, "").replace(/[^\d,.-]/g, "");
 
-  if (!cleaned || cleaned === "-" || cleaned === ".") {
+  if (!valueWithSign || valueWithSign === "-" || valueWithSign === ".") {
     return null;
   }
 
-  const value = Number(cleaned);
-  return Number.isFinite(value) ? value : null;
+  const sign = valueWithSign.startsWith("-") ? -1 : 1;
+  const unsigned = valueWithSign.replace(/^[+-]/, "");
+  const lastComma = unsigned.lastIndexOf(",");
+  const lastDot = unsigned.lastIndexOf(".");
+  const decimalSeparator = lastComma > lastDot ? "," : ".";
+  const decimalIndex = Math.max(lastComma, lastDot);
+  const decimalPart = unsigned.slice(decimalIndex + 1);
+
+  if (decimalIndex === -1 || decimalPart.length !== 2) {
+    return null;
+  }
+
+  const integerPart = unsigned.slice(0, decimalIndex).replace(/[.,]/g, "");
+  const normalized = `${integerPart}.${decimalPart}`;
+  const value = Number(normalized) * sign;
+
+  if (
+    !Number.isFinite(value) ||
+    Math.abs(value) < MIN_TRANSACTION_AMOUNT ||
+    Math.abs(value) > MAX_REASONABLE_TRANSACTION_AMOUNT
+  ) {
+    return null;
+  }
+
+  return value;
+}
+
+function cleanDescription(line: string, amountToken: string) {
+  return line
+    .replace(amountToken, "")
+    .replace(DATE_PATTERN, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function extractTransactionFromLine(line: string): ParsedTransaction | null {
+  if (SUMMARY_LINE_PATTERN.test(line)) {
+    return null;
+  }
+
+  const amountMatches = line.match(AMOUNT_PATTERN) || [];
+  const amountToken = amountMatches.at(-1);
+
+  if (!amountToken) {
+    return null;
+  }
+
+  const amount = parseBrazilianAmount(amountToken);
+
+  if (amount === null) {
+    return null;
+  }
+
+  return {
+    amount,
+    date: line.match(DATE_PATTERN)?.[0],
+    description: cleanDescription(line, amountToken) || "Transacao importada",
+    line,
+  };
 }
 
 function parseOfx(content: string): ParsedTransaction[] {
-  const matches = content.match(/<TRNAMT>\s*([-+]?[\d.,]+)/gi) || [];
+  const transactionMatches =
+    content.match(/<STMTTRN>[\s\S]*?(?=<STMTTRN>|<\/BANKTRANLIST>|$)/gi) || [];
+  const transactions: ParsedTransaction[] = [];
 
-  return matches
-    .map((match) => {
-      const amount = parseBrazilianAmount(match.replace(/<TRNAMT>/i, ""));
-      return amount === null ? null : { amount };
-    })
-    .filter((item): item is ParsedTransaction => item !== null);
+  for (const transactionBlock of transactionMatches) {
+    const rawAmount = transactionBlock.match(/<TRNAMT>\s*([-+]?[\d.,]+)/i)?.[1];
+    const amount = rawAmount ? parseBrazilianAmount(rawAmount) : null;
+
+    if (amount === null) {
+      continue;
+    }
+
+    transactions.push({
+      amount,
+      date: transactionBlock
+        .match(/<DTPOSTED>\s*(\d{4})(\d{2})(\d{2})/i)
+        ?.slice(1, 4)
+        .reverse()
+        .join("/"),
+      description:
+        transactionBlock.match(/<MEMO>\s*([^\r\n<]+)/i)?.[1]?.trim() ||
+        transactionBlock.match(/<NAME>\s*([^\r\n<]+)/i)?.[1]?.trim() ||
+        "Transacao OFX",
+      line: transactionBlock.replace(/\s+/g, " ").trim(),
+    });
+  }
+
+  return transactions;
 }
 
 function parseDelimited(content: string): ParsedTransaction[] {
@@ -62,15 +143,22 @@ function parseDelimited(content: string): ParsedTransaction[] {
     const delimiter = line.includes(";") ? ";" : line.includes("\t") ? "\t" : ",";
     const columns = line.split(delimiter).map((column) => column.trim());
 
-    const amount = [...columns]
+    const amountColumn = [...columns]
       .reverse()
-      .map(parseBrazilianAmount)
-      .find((value): value is number => value !== null);
+      .find((value) => parseBrazilianAmount(value) !== null);
+    const amount = amountColumn ? parseBrazilianAmount(amountColumn) : null;
 
-    if (amount !== undefined) {
+    if (amount !== null) {
       transactions.push({
         amount,
-        description: columns.slice(0, Math.max(columns.length - 1, 1)).join(" "),
+        date: line.match(DATE_PATTERN)?.[0],
+        description:
+          columns
+            .filter((column) => column !== amountColumn)
+            .join(" ")
+            .replace(/\s{2,}/g, " ")
+            .trim() || "Transacao importada",
+        line,
       });
     }
   }
@@ -87,16 +175,10 @@ function parseLooseText(content: string): ParsedTransaction[] {
   const transactions: ParsedTransaction[] = [];
 
   for (const line of lines) {
-    const amountMatches = line.match(AMOUNT_PATTERN) || [];
-    const amount = amountMatches
-      .map(parseBrazilianAmount)
-      .findLast((value): value is number => value !== null);
+    const transaction = extractTransactionFromLine(line);
 
-    if (amount !== undefined) {
-      transactions.push({
-        amount,
-        description: line.replace(amountMatches.at(-1) || "", "").trim(),
-      });
+    if (transaction) {
+      transactions.push(transaction);
     }
   }
 
@@ -145,7 +227,7 @@ function summarizeTransactions(
 
     return {
       income: 0,
-      expenses: Math.round(total),
+      expenses: Math.round(total * 100) / 100,
       positiveCount: transactions.filter((transaction) => transaction.amount > 0)
         .length,
       negativeCount: transactions.filter((transaction) => transaction.amount < 0)
@@ -161,8 +243,8 @@ function summarizeTransactions(
     .reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
 
   return {
-    income: Math.round(income),
-    expenses: Math.round(expenses),
+    income: Math.round(income * 100) / 100,
+    expenses: Math.round(expenses * 100) / 100,
     positiveCount: transactions.filter((transaction) => transaction.amount > 0)
       .length,
     negativeCount: transactions.filter((transaction) => transaction.amount < 0)
@@ -264,7 +346,8 @@ export async function POST(request: NextRequest) {
       transactions: transactions.length,
       summary,
       suggestion,
-      preview: transactions.slice(0, 8),
+      items: transactions,
+      preview: transactions.slice(0, 20),
     });
   } catch (error) {
     console.error("Error in POST /api/importacao/analisar:", error);
