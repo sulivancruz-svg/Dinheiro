@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dinheiro com Direcao
 
-## Getting Started
+MVP de educacao financeira com diagnostico, perfis, caixinhas, mentor IA e controles LGPD.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- PostgreSQL + Prisma 7
+- NextAuth v4
+- Claude API
+- Tailwind CSS 4
+- Vitest
+
+## Funcionalidades
+
+- Landing page
+- Login com Google, GitHub e magic link
+- Onboarding financeiro
+- Dashboard com perfil, plano de acao e caixinhas
+- Historico de diagnosticos
+- Pagina detalhada de caixinhas
+- Mentor financeiro com IA
+- Settings com consentimentos LGPD
+- Exportacao de dados LGPD
+- Solicitacao de exclusao com soft delete
+
+## Desenvolvimento
 
 ```bash
+npm install
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Validacao
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test -- --run
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Variaveis de ambiente
 
-## Learn More
+Use `.env.example` como base. Em producao, configure as variaveis no provedor de deploy.
 
-To learn more about Next.js, take a look at the following resources:
+Obrigatorias:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `DATABASE_URL`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
+- `GOOGLE_ID`
+- `GOOGLE_SECRET`
+- `GITHUB_ID`
+- `GITHUB_SECRET`
+- `CLAUDE_API_KEY`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Obrigatorias se magic link por email estiver ativo:
 
-## Deploy on Vercel
+- `EMAIL_SERVER_HOST`
+- `EMAIL_SERVER_PORT`
+- `EMAIL_SERVER_USER`
+- `EMAIL_SERVER_PASSWORD`
+- `EMAIL_FROM`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Veja [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md).
+
+## Seguranca
+
+Veja [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md).
