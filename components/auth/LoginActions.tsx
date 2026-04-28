@@ -9,6 +9,9 @@ export function LoginActions() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const showTestLogin =
+    process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true";
 
   function handleProvider(provider: "google" | "github") {
     startTransition(() => {
@@ -38,6 +41,33 @@ export function LoginActions() {
 
   return (
     <div className="space-y-4">
+      {showTestLogin ? (
+        <div className="rounded-3xl border border-[var(--color-clay)]/20 bg-[var(--color-gold)]/10 p-4">
+          <p className="text-sm font-bold text-[var(--color-ink)]">
+            Modo de teste local
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--color-muted)]">
+            Informe seu email abaixo e entre sem OAuth para preencher seus dados
+            reais no onboarding.
+          </p>
+          <Button
+            className="mt-3 w-full"
+            disabled={isPending}
+            onClick={() => {
+              startTransition(() => {
+                void signIn("test-login", {
+                  email: email || undefined,
+                  callbackUrl: "/onboarding",
+                });
+              });
+            }}
+            variant="secondary"
+          >
+            Entrar com meu email em modo teste
+          </Button>
+        </div>
+      ) : null}
+
       <Button
         className="w-full"
         disabled={isPending}
@@ -56,7 +86,7 @@ export function LoginActions() {
 
       <form className="space-y-3 pt-3" onSubmit={handleEmail}>
         <Input
-          label="Ou receba um magic link"
+          label="Email"
           name="email"
           onChange={(event) => setEmail(event.target.value)}
           placeholder="voce@email.com"
@@ -65,7 +95,7 @@ export function LoginActions() {
           value={email}
         />
         <Button className="w-full" disabled={isPending || !email} type="submit">
-          Enviar link por email
+          Enviar magic link por email
         </Button>
       </form>
 

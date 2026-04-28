@@ -19,10 +19,12 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/onboarding/:path*",
+    "/importar/:path*",
     "/mentor/:path*",
     "/historico/:path*",
     "/caixinhas/:path*",
     "/settings/:path*",
     "/api/lgpd/:path*",
+    "/api/importacao/:path*",
   ],
 };

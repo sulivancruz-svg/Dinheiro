@@ -1,4 +1,5 @@
 import { DiagnosticoForm } from "@/components/forms/DiagnosticoForm";
+import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { requireAuth } from "@/lib/auth/session";
 
@@ -23,6 +24,14 @@ export default async function OnboardingPage() {
         </div>
 
         <Card className="bg-[var(--color-paper)]/90">
+          <div className="mb-6 flex flex-col justify-between gap-3 rounded-[1.5rem] bg-[var(--color-sand)]/35 p-4 sm:flex-row sm:items-center">
+            <p className="text-sm leading-6 text-[var(--color-muted)]">
+              Tem extrato bancario ou fatura em CSV/OFX/TXT?
+            </p>
+            <ButtonLink href="/importar" variant="secondary">
+              Importar arquivo
+            </ButtonLink>
+          </div>
           <DiagnosticoForm />
         </Card>
       </section>

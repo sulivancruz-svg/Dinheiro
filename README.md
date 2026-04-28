@@ -34,6 +34,11 @@ npm run db:seed
 npm run dev
 ```
 
+Para testar localmente sem configurar OAuth/SMTP, mantenha `ENABLE_TEST_LOGIN=true`
+e `NEXT_PUBLIC_ENABLE_TEST_LOGIN=true`. Na tela `/login`, informe seu email e
+use `Entrar com meu email em modo teste`. Isso cria/recupera um usuario local
+para voce preencher seus dados reais no onboarding.
+
 ## Validacao
 
 ```bash
