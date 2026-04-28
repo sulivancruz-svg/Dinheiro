@@ -22,5 +22,6 @@ export const config = {
     "/mentor/:path*",
     "/historico/:path*",
     "/caixinhas/:path*",
+    "/settings/:path*",
   ],
 };
